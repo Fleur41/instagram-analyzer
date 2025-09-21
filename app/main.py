@@ -219,6 +219,27 @@ async def global_exception_handler(request, exc):
         content={"detail": "Internal server error", "error": str(exc)}
     )
 
+
+@app.get('/profile/{username}')
+async def get_profile(username: str, use_credentials: bool = False):
+    """Return basic profile information suitable for the frontend."""
+    try:
+        analyzer = FastInstagramAnalyzer(use_credentials=use_credentials)
+        p = analyzer.get_profile_fast(username)
+        profile = {
+            "username": getattr(p, 'username', username),
+            "full_name": getattr(p, 'full_name', ''),
+            "biography": getattr(p, 'biography', ''),
+            "profile_pic_url": getattr(p, 'profile_pic_url', ''),
+            "is_private": getattr(p, 'is_private', False),
+            "followers": getattr(p, 'followers', 0),
+            "following": getattr(p, 'followees', 0),
+            "total_posts": getattr(p, 'mediacount', 0)
+        }
+        return {"status": "ok", "profile": profile}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 if __name__ == "__main__":
     uvicorn.run(
         "app.main:app",

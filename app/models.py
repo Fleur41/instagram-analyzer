@@ -32,3 +32,4 @@ class AnalysisRequest(BaseModel):
     use_credentials: bool = False
     max_posts: int = 100
     max_stories: int = 50
+    fetch_all_posts: bool = False

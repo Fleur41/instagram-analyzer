@@ -19,6 +19,13 @@ class FastInstagramAnalyzer:
         self.L.context._session.headers.update({
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
         })
+        # Add Instagram web app id header which some endpoints expect
+        try:
+            self.L.context._session.headers.update({
+                'X-IG-App-ID': '936619743392459'
+            })
+        except Exception:
+            pass
         
         # Try to reuse a saved session for the configured username to avoid repeated logins
         self._session_file = None
@@ -115,7 +122,9 @@ class FastInstagramAnalyzer:
                     "username": getattr(user2_profile, 'username', user2),
                     "full_name": getattr(user2_profile, 'full_name', ''),
                     "biography": getattr(user2_profile, 'biography', ''),
-                    "profile_pic_url": getattr(user2_profile, 'profile_pic_url', ''),
+                    # Prefer HD profile pic when available
+                    "profile_pic_url_hd": getattr(user2_profile, 'profile_pic_url_hd', ''),
+                    "profile_pic_url": getattr(user2_profile, 'profile_pic_url_hd', '') or getattr(user2_profile, 'profile_pic_url', ''),
                     "is_private": getattr(user2_profile, 'is_private', False),
                     "followers": getattr(user2_profile, 'followers', 0),
                     "following": getattr(user2_profile, 'followees', 0),

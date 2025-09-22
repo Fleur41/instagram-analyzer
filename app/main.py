@@ -230,7 +230,8 @@ async def get_profile(username: str, use_credentials: bool = False):
             "username": getattr(p, 'username', username),
             "full_name": getattr(p, 'full_name', ''),
             "biography": getattr(p, 'biography', ''),
-            "profile_pic_url": getattr(p, 'profile_pic_url', ''),
+            "profile_pic_url_hd": getattr(p, 'profile_pic_url_hd', ''),
+            "profile_pic_url": getattr(p, 'profile_pic_url_hd', '') or getattr(p, 'profile_pic_url', ''),
             "is_private": getattr(p, 'is_private', False),
             "followers": getattr(p, 'followers', 0),
             "following": getattr(p, 'followees', 0),
@@ -239,6 +240,48 @@ async def get_profile(username: str, use_credentials: bool = False):
         return {"status": "ok", "profile": profile}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get('/auth/test')
+async def test_credentials():
+    """Test configured INSTAGRAM_USERNAME/INSTAGRAM_PASSWORD by attempting login/load session."""
+    from app.config import Config
+    info = {
+        "configured_username": bool(Config.INSTAGRAM_USERNAME),
+        "configured_password": bool(Config.INSTAGRAM_PASSWORD),
+        "session_file": None,
+        "logged_in": False,
+        "message": ""
+    }
+    try:
+        analyzer = FastInstagramAnalyzer(use_credentials=True)
+        # if session file exists, report it
+        try:
+            import os
+            safe_user = Config.INSTAGRAM_USERNAME.replace('@', '').replace('/', '_')
+            session_dir = os.path.join(os.getcwd(), '.insta_sessions')
+            session_file = os.path.join(session_dir, f"{safe_user}.session")
+            if os.path.exists(session_file):
+                info['session_file'] = session_file
+                info['logged_in'] = True
+                info['message'] = 'Loaded existing session'
+            else:
+                # try quick profile fetch to confirm login works
+                try:
+                    if Config.INSTAGRAM_USERNAME:
+                        analyzer.get_profile_fast(Config.INSTAGRAM_USERNAME)
+                        info['logged_in'] = True
+                        info['message'] = 'Login successful'
+                    else:
+                        info['message'] = 'No username configured'
+                except Exception as e:
+                    info['message'] = str(e)
+        except Exception as e:
+            info['message'] = str(e)
+    except Exception as e:
+        info['message'] = str(e)
+
+    return info
 
 if __name__ == "__main__":
     uvicorn.run(

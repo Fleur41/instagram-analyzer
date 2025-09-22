@@ -43,7 +43,7 @@
               <!-- plus icon -->
               <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
             </button>
-            <img id="headerAvatar" src="" class="w-8 h-8 rounded-full border" alt="you" />
+            <img id="headerAvatar" src="" class="w-8 h-8 rounded-full border object-cover" alt="you" />
           </div>
         </div>
 
@@ -57,9 +57,11 @@
           <input id="max_posts" type="number" class="w-28 border rounded p-2 text-sm" value="10" />
           <label class="flex items-center gap-2 text-sm"><input id="use_credentials" type="checkbox"/> Use creds</label>
           <label class="flex items-center gap-2 text-sm"><input id="fetch_all" type="checkbox"/> Fetch all</label>
-          <button id="loadProfile" class="bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm">Load profile</button>
-          <button id="analyze" class="bg-blue-600 text-white px-3 py-2 rounded text-sm">Analyze</button>
+           <button id="loadProfile" class="bg-gray-200 text-gray-700 px-3 py-2 rounded text-sm">Load profile</button>
+           <button id="analyze" class="bg-blue-600 text-white px-3 py-2 rounded text-sm">Analyze</button>
+           <button id="testCreds" class="px-3 py-2 bg-indigo-600 text-white rounded">Test credentials</button>
         </div>
+         <div id="authTestResult" class="mt-3 text-sm text-gray-700"></div>
       </div>
       </header>
 
@@ -78,6 +80,11 @@
               </div>
             </div>
             <p id="profileBio" class="mt-3 text-sm text-gray-700"></p>
+
+            <!-- Hero post image (first recent post) -->
+            <div id="heroPostWrap" class="mt-4 hidden">
+              <img id="heroPost" src="" alt="latest post" class="w-full rounded-md object-contain max-h-96 mx-auto" />
+            </div>
 
             <div id="summary" class="mt-4 grid grid-cols-4 gap-3 text-sm text-gray-600">
               <div class="p-3 bg-white border rounded text-center">Posts<br><div id="postsChecked" class="font-medium mt-1 text-lg"></div></div>
@@ -129,6 +136,7 @@
     <script>
   const analyzeBtn = document.getElementById('analyze')
     const loadProfileBtn = document.getElementById('loadProfile')
+    const testCredsBtn = document.getElementById('testCreds')
     const statusCard = document.getElementById('statusCard')
       const avatar = document.getElementById('avatar')
       const profileName = document.getElementById('profileName')
@@ -181,7 +189,7 @@
           const user2 = document.getElementById('user2').value.trim()
           if(!user2){ alert('user2 required'); return }
           try{
-            const resp = await fetch('/profile/' + encodeURIComponent(user2))
+            const resp = await fetch('/profile/' + encodeURIComponent(user2) + '?use_credentials=' + (document.getElementById('use_credentials').checked ? 'true' : 'false'))
             const j = await resp.json()
             if(j.status !== 'ok') throw new Error(j.detail || 'failed')
             // craft a minimal result object similar to analyze result so renderResult can handle it
@@ -223,6 +231,9 @@
         if(res.profile){
           statusCard.classList.remove('hidden')
           avatar.src = res.profile.profile_pic_url || ''
+          // also set small header avatar for consistent UI
+          const headerAvatar = document.getElementById('headerAvatar')
+          if(headerAvatar){ headerAvatar.src = res.profile.profile_pic_url || '' }
           profileName.textContent = `${res.profile.full_name || ''} (@${res.profile.username || ''})`
           profileMeta.textContent = `${res.profile.is_private ? 'Private account' : 'Public account'}`
           profileBio.textContent = res.profile.biography || ''
@@ -252,6 +263,17 @@
             `
             storiesRow.appendChild(s)
           })
+
+          // show hero image (first post) if available
+          const heroWrap = document.getElementById('heroPostWrap')
+          const heroImg = document.getElementById('heroPost')
+          if(res.recent_posts[0] && res.recent_posts[0].url){
+            heroImg.src = res.recent_posts[0].url
+            heroWrap.classList.remove('hidden')
+          } else {
+            heroImg.src = ''
+            heroWrap.classList.add('hidden')
+          }
 
           res.recent_posts.forEach(p => {
             const d = document.createElement('div')
@@ -315,6 +337,21 @@
           pollStatus(j.task_id)
         } catch (e){ alert('Failed to start full fetch: ' + e) }
       }
+      // Test credentials button: call backend /auth/test and display diagnostic info
+      if(testCredsBtn){
+        testCredsBtn.addEventListener('click', async () => {
+          const out = document.getElementById('authTestResult')
+          out.textContent = 'Testing credentials...'
+          try{
+            const resp = await fetch('/auth/test')
+            const data = await resp.json()
+            out.textContent = JSON.stringify(data, null, 2)
+          }catch(err){
+            out.textContent = 'Error: ' + String(err)
+          }
+        })
+      }
+
       closeModal.addEventListener('click', () => modal.classList.add('hidden'))
 
     </script>
